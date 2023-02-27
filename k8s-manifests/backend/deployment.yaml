@@ -1,0 +1,57 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: momo-backend-release-name
+  namespace: default
+  labels:
+    app: backend
+    app.kubernetes.io/name: momo-backend
+    app.kubernetes.io/instance: "release-name"
+    app.kubernetes.io/version: "latest"
+    app.kubernetes.io/managed-by: "Helm"
+    helm.sh/chart: "backend-1.0.0"
+    app.kubernetes.io/component: backend
+    app.kubernetes.io/part-of: momo-store
+spec:
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 20%
+  selector:
+    matchLabels:
+      app: backend
+  template:
+    metadata:
+      labels:
+        app: backend
+      annotations:
+        prometheus.io/path: /metrics
+        prometheus.io/port: "8081"
+        prometheus.io/scrape: "true"
+    spec:
+      containers:
+        - name: backend
+          image: "gitlab.vnaz.site:5050/musasy/momo-store/momo-backend:latest"
+          imagePullPolicy: Always
+          resources:
+            limits:
+              cpu: 0.2
+              memory: 1024Mi
+            requests:
+              cpu: 0.1
+              memory: 512Mi
+          ports:
+            - name: backend
+              containerPort: 8081
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8081
+            initialDelaySeconds: 20
+            periodSeconds: 30
+            timeoutSeconds: 3
+            failureThreshold: 6
+      imagePullSecrets:
+        - name: docker-config-secret

@@ -1,0 +1,23 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: momo-store
+spec:
+  destination:
+    namespace: default
+    server: 'https://kubernetes.default.svc'
+  source:
+    path: helm
+    repoURL: 'https://gitlab.vnaz.site/musasy/momo-store.git'
+    targetRevision: other
+    helm:
+      valueFiles:
+        - values.yaml
+      values: |-
+        backend:
+          registry: <your dockerconfigjson>
+  project: default
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

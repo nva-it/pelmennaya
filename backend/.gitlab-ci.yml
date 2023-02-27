@@ -1,0 +1,85 @@
+variables: 
+  SAST_EXCLUDED_ANALYZERS: "nodejs-scan-sast, gosec-sast"
+
+include:
+  - template: Security/SAST.gitlab-ci.yml
+  - project: "templates/ci"
+    file: "DockerInDockerTemplate.yml"
+
+stages:
+  - test
+  - build
+  - release
+  - notify
+  
+gosec-test:
+  stage: test
+  image: securego/gosec
+  allow_failure: true
+  script:
+    - cd backend
+    - gosec ./...
+
+sonarqube-backend-sast:
+  stage: test
+  image: sonarsource/sonar-scanner-cli:latest
+  allow_failure: true
+  script:
+    - cd backend
+    - >
+      sonar-scanner
+      -Dsonar.qualitygate.wait=true
+      -Dsonar.projectKey=${SONAR_KEY_B}
+      -Dsonar.sources=.
+      -Dsonar.host.url=${SONAR_URL}
+      -Dsonar.login=${SONAR_LOGIN_B}
+
+go-test:
+  stage: test
+  image: golang
+  allow_failure: true
+  script:
+    - cd backend
+    - CGO_ENABLED=0 go test -v ./...
+
+build-docker-image:
+  stage: build
+  cache: []
+  image:
+    name: gcr.io/kaniko-project/executor:debug
+    entrypoint: [""]
+  script:
+    - mkdir -p /kaniko/.docker
+    - echo "{\"auths\":{\"${CI_REGISTRY}\":{\"auth\":\"$(printf "%s:%s" "${CI_REGISTRY_USER}" "${CI_REGISTRY_PASSWORD}" | base64 | tr -d '\n')\"}}}" > /kaniko/.docker/config.json
+    - >-
+      /kaniko/executor
+      --context "${CI_PROJECT_DIR}/backend"
+      --build-arg VERSION=$VERSION
+      --dockerfile "${CI_PROJECT_DIR}/backend/Dockerfile"
+      --destination "${CI_REGISTRY_IMAGE}/momo-backend:${VERSION}"
+      --cache=true
+
+upload-image-latest:
+  cache: []
+  image: docker:20.10.12-dind-rootless
+  stage: release
+  before_script:
+    - until docker info; do sleep 1; done
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+  script:
+    - docker pull $CI_REGISTRY_IMAGE/momo-backend:$VERSION
+    # если образ прошел проверки в CI (сканирование, тесты и т.д), то тегаем latest
+    - docker tag $CI_REGISTRY_IMAGE/momo-backend:$VERSION $CI_REGISTRY_IMAGE/momo-backend:latest
+    - docker push $CI_REGISTRY_IMAGE/momo-backend:latest
+
+telegram-notify-backend:
+  stage: notify
+  script:
+    - > 
+      curl -X POST -H "Content-Type: application/json" -d 
+      "{\"chat_id\": \"-XXXXXXX\", 
+      \"text\": \"New release momo-backend\"}" 
+      https://api.telegram.org/botXXXXX:XXXXXX/sendMessage
+  needs:
+    - upload-image-latest
+  when: manual

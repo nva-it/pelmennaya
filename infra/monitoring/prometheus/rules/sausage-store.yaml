@@ -1,0 +1,28 @@
+# ---
+# groups:
+  # - name: Sausage store rules
+    # rules:
+    # - alert: InstanceDown
+      # expr: up{app="backend"} == 0
+      # for: 1m
+      # labels:
+        # severity: critical
+        # project: "sausage_store"
+        # component: "Backend"
+    # - alert: Error500
+      # expr: sum(http_server_requests_seconds_count{status="500"})
+      # labels:
+        # severity: critical
+        # project: "sausage_store"
+    # - alert: Requestslatency
+      # expr: quantile(0.95,http_server_requests_seconds_max{uri="/api/orders", method="POST"}) >=0.1
+      # for: 5m
+      # labels:
+        # severity: warning
+        # project: "sausage_store"
+    # - alert: ErrorActuator
+      # expr: http_server_requests_seconds_count{uri="/actuator/prometheus", status=~"4.."}
+      # for: 2m
+      # labels:
+        # severity: warning
+        # project: "sausage_store"

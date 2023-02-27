@@ -1,0 +1,35 @@
+backend:
+  image: gitlab.vnaz.site:5050/musasy/momo-store/momo-backend
+  replicas: 1
+  imagePullPolicy: Always
+  servicePort: 8081
+  serviceType: ClusterIP
+  rollingUpdate:
+    maxUnavailable: 1
+    maxSurge: 20%
+  resources:
+    requests:
+      memory: "512Mi"
+      cpu: 0.1
+    limits:
+      memory: "1024Mi"
+      cpu: 0.2
+  hpaSpec:
+    minReplicas: 1
+    maxReplicas: 5
+    cpuUtilization: 75
+  registry: <your dockerconfigjson>
+
+
+frontend:
+  image: gitlab.vnaz.site:5050/musasy/momo-store/momo-frontend
+  replicas: 1
+  imagePullPolicy: Always
+  service:
+    type: ClusterIP
+    port: 8080
+  fqdn: momo.vnaz.site
+  env:
+    name: VUE_APP_API_URL
+  imagexporter: nginx/nginx-prometheus-exporter:0.11
+  exporterPort: 9113
