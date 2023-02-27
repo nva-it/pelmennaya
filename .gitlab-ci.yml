@@ -1,0 +1,35 @@
+variables:
+    VERSION: 1.0.${CI_PIPELINE_ID}
+
+stages:
+  - module-pipelines
+
+frontend:
+  stage: module-pipelines
+  trigger:
+    include:
+      - "/frontend/.gitlab-ci.yml"
+    strategy: depend
+  only:
+    changes:
+      - frontend/**/*
+
+backend:
+  stage: module-pipelines
+  trigger:
+    include:
+      - "/backend/.gitlab-ci.yml"
+    strategy: depend
+  only:
+    changes:
+      - backend/**/*
+
+helm:
+  stage: module-pipelines
+  trigger:
+    include:
+      - "upload-helm.gitlab-ci.yml"
+    strategy: depend
+  only:
+    changes:
+      - helm/**/*
